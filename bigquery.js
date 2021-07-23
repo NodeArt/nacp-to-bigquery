@@ -1,12 +1,10 @@
 import { BigQuery } from '@google-cloud/bigquery';
-
-import { bigqueryConfig } from './config/bigquery.js';
+import { Transform } from 'readable-stream';
+import { bigqueryConfig, nacp } from './config/bigquery.js';
 
 // Check all env variables in bigquery config
 if (Object.values(bigqueryConfig).includes(undefined)) {
-  console.log(bigqueryConfig);
-  console.error('no connection settings in env');
-  process.exit(100);
+  throw 'no connection settings in env';
 }
 
 // Connect to Google BigQuery
@@ -52,18 +50,63 @@ export async function getTable(tableConfig) {
   return createTable(tableConfig);
 }
 
-export async function insertData(objectsArray, tableConfig) {
+export async function insertData(jsonStream, tableConfig) {
   // Creating BigQuery table connect
-  const bqTable = db
+  const bqStream = db
     .dataset(bigqueryConfig.datasetID)
-    .table(tableConfig.tableID);
+    .table(tableConfig.tableID)
+    .createWriteStream({
+      sourceFormat: 'NEWLINE_DELIMITED_JSON',
+    });
 
-  let count = 0;
-  // How much rows we send in one iteration
-  const step = 1000;
-  while (objectsArray[count]) {
-    console.log(count);
-    await bqTable.insert(objectsArray.slice(count, count + step));
-    count += step;
-  }
+  let count = 1;
+  // All properties from scheme, to check them all
+  const propertiesArray = [];
+  nacp.settlementsSchema.forEach((obj) => propertiesArray.push(obj.name));
+
+  const stream = jsonStream.pipe(
+    new Transform({
+      objectMode: true,
+      transform(chunk, enc, callback) {
+        const dataObj = {};
+        propertiesArray.forEach((prop, index) => {
+          if (index === 31) {
+            // in response we have case like [{},null], null we need to catch
+            if (Array.isArray(chunk?.[prop])) {
+              dataObj[prop] = [];
+              chunk[prop].forEach((elem) => {
+                if (elem) {
+                  dataObj[prop].push(elem);
+                }
+              });
+            } else {
+              dataObj[prop] = [
+                {
+                  codexArticleId: null,
+                  codexArticleName: null,
+                },
+              ];
+            }
+          } else {
+            dataObj[prop] = chunk?.[prop] ?? null;
+          }
+        });
+        // Next row for debug
+        // console.log(`Count ${count} ${JSON.stringify(dataObj)}`);
+
+        this.push(JSON.stringify(dataObj) + '\n');
+        if (count % 1000 === 0) {
+          console.log(count);
+        }
+        count++;
+        callback();
+      },
+    })
+  );
+
+  stream.pipe(bqStream);
+  bqStream.once('complete', () => {
+    console.log('bq end');
+    process.exit(0);
+  });
 }
