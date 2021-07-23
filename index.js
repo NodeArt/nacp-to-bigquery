@@ -1,16 +1,13 @@
 // import * as dotenv from 'dotenv';
 // dotenv.config();
 
-import * as JSONStream from 'JSONStream';
-import * as https from 'https';
-
-import { DATA_URL } from './config/download.js';
+const https = require('https');
+const JSONStream = require('JSONStream');
+const { DATA_URL } = require('./config/download.js');
+const bqConfig = require('./config/bigquery.js');
+const { getTable, insertData } = require('./bigquery.js');
 
 const downloadFile = async () => {
-  // Import in function for correct env config setup
-  const bqConfig = await import('./config/bigquery.js');
-  const { getTable, insertData } = await import('./bigquery.js');
-
   if (!DATA_URL) {
     throw 'No url';
   }
