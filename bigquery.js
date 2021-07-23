@@ -1,5 +1,5 @@
-import { BigQuery } from '@google-cloud/bigquery';
-import { Transform } from 'readable-stream';
+import * as bq from '@google-cloud/bigquery';
+import * as rs from 'readable-stream';
 import { bigqueryConfig, nacp } from './config/bigquery.js';
 
 // Check all env variables in bigquery config
@@ -8,7 +8,7 @@ if (Object.values(bigqueryConfig).includes(undefined)) {
 }
 
 // Connect to Google BigQuery
-const db = new BigQuery({
+const db = new bq.BigQuery({
   projectId: bigqueryConfig.projectID,
   credentials: {
     client_email: bigqueryConfig.client_email,
@@ -65,7 +65,7 @@ export async function insertData(jsonStream, tableConfig) {
   nacp.settlementsSchema.forEach((obj) => propertiesArray.push(obj.name));
 
   const stream = jsonStream.pipe(
-    new Transform({
+    new rs.Transform({
       objectMode: true,
       transform(chunk, enc, callback) {
         const dataObj = {};
