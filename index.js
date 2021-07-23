@@ -1,5 +1,5 @@
-import { config } from 'dotenv';
-config();
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 import * as JSONStream from 'JSONStream';
 import * as https from 'https';
