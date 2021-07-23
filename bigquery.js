@@ -33,7 +33,7 @@ const createTable = (tableConfig) => {
 };
 
 // Drop table and call createTable
-export async function getTable(tableConfig) {
+module.exports.getTable = async (tableConfig) => {
   const exists = await db
     .dataset(bigqueryConfig.datasetID)
     .table(tableConfig.tableID)
@@ -48,9 +48,9 @@ export async function getTable(tableConfig) {
   }
 
   return createTable(tableConfig);
-}
+};
 
-export async function insertData(jsonStream, tableConfig) {
+module.exports.insertData = async (jsonStream, tableConfig) => {
   // Creating BigQuery table connect
   const bqStream = db
     .dataset(bigqueryConfig.datasetID)
@@ -109,4 +109,4 @@ export async function insertData(jsonStream, tableConfig) {
     console.log('bq end');
     process.exit(0);
   });
-}
+};
