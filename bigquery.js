@@ -60,27 +60,19 @@ module.exports.insertData = async (jsonStream, tableConfig) => {
     });
 
   let count = 1;
-  // All properties from scheme, to check them all
-  const propertiesArray = [];
-  nacp.settlementsSchema.forEach((obj) => propertiesArray.push(obj.name));
 
   const stream = jsonStream.pipe(
     new Transform({
       objectMode: true,
       transform(chunk, enc, callback) {
         const dataObj = {};
-        propertiesArray.forEach((prop, index) => {
-          if (index === 31) {
+        nacp.settlementsSchema.forEach((prop) => {
+          if (prop.mode === 'REPEATED') {
             // in response we have case like [{},null], null we need to catch
-            if (Array.isArray(chunk?.[prop])) {
-              dataObj[prop] = [];
-              chunk[prop].forEach((elem) => {
-                if (elem) {
-                  dataObj[prop].push(elem);
-                }
-              });
+            if (Array.isArray(chunk?.[prop.name])) {
+              dataObj[prop.name] = chunk[prop.name].filter((el) => el);
             } else {
-              dataObj[prop] = [
+              dataObj[prop.name] = [
                 {
                   codexArticleId: null,
                   codexArticleName: null,
@@ -88,7 +80,7 @@ module.exports.insertData = async (jsonStream, tableConfig) => {
               ];
             }
           } else {
-            dataObj[prop] = chunk?.[prop] ?? null;
+            dataObj[prop.name] = chunk?.[prop.name] ?? null;
           }
         });
         // Next row for debug
